@@ -7,20 +7,34 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="topbar">
+  <!-- Landing / modo -->
+  <div id="landing" class="landing">
+    <div class="landing-card">
+      <h1>Torneo FC Mobile</h1>
+      <p class="muted">Selecciona cómo quieres entrar</p>
+      <div class="row" style="margin-top:12px">
+        <button id="enterUser" class="btn neon-yellow large">Entrar como Usuario</button>
+        <button id="enterAdmin" class="btn neon-purple large">Entrar como Admin</button>
+      </div>
+      <p class="muted" style="margin-top:12px;font-size:13px">Usuario: ver calendario / tabla y registrarte (1 vez). Admin: control total (clave 0007).</p>
+    </div>
+  </div>
+
+  <header class="topbar hidden" id="topbar">
     <div class="brand">
       <div class="logo">⚽</div>
       <h1>Torneo FC Mobile</h1>
     </div>
-    <nav class="nav">
+    <nav class="nav" id="mainNav">
       <button data-sec="registro" class="nav-btn active">Registrar</button>
       <button data-sec="calendario" class="nav-btn">Calendario</button>
       <button data-sec="tabla" class="nav-btn">Tabla</button>
       <button id="adminBtn" class="nav-btn">Admin</button>
+      <button id="volverLanding" class="nav-btn small">Salir</button>
     </nav>
   </header>
 
-  <main class="container">
+  <main class="container hidden" id="app">
     <!-- Registrar -->
     <section id="registro" class="panel">
       <h2>Registrar jugador</h2>
@@ -91,7 +105,7 @@
           <p>Ingresa la clave de administrador.</p>
           <input id="adminCodeInput" type="password" placeholder="Clave admin" />
           <button id="adminLoginBtn" class="btn neon-yellow">Entrar</button>
-          <p class="muted">Clave única: (segura en cliente) — 0007</p>
+          <p class="muted">Clave única: 0007</p>
           <p id="adminMsg" class="msg"></p>
         </div>
 
@@ -205,7 +219,7 @@
 
   </main>
 
-  <footer class="footer">
+  <footer class="footer hidden" id="footer">
     <p>Diseño negro neón — FC Mobile Tournament</p>
   </footer>
 
