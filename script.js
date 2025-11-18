@@ -1,24 +1,33 @@
-/* script.js - Lógica completa del torneo (localStorage). */
+/* script.js - V. final: landing con modo usuario/admin + registro 1 vez por dispositivo */
 (() => {
   const LS_KEY = "fc_torneo_v1";
-  const ADMIN_CODE = "0007"; // tal como pediste
-  const app = {
-    state: null,
-    ui: {}
-  };
+  const LS_CURRENT = "fc_torneo_current_player";
+  const ADMIN_CODE = "0007";
 
-  /* ---------- INIT ---------- */
-  function init() {
+  const app = { state: null, ui: {} };
+
+  function init(){
     cacheUI();
+    bindLanding();
     bindNav();
     loadState();
-    renderAll();
-    bindUI();
+    // default show landing
   }
 
-  function cacheUI() {
-    app.ui.sections = document.querySelectorAll(".panel");
-    app.ui.navBtns = document.querySelectorAll(".nav-btn");
+  function cacheUI(){
+    // landing
+    app.ui.landing = document.getElementById("landing");
+    app.ui.enterUser = document.getElementById("enterUser");
+    app.ui.enterAdmin = document.getElementById("enterAdmin");
+
+    // main app layout
+    app.ui.topbar = document.getElementById("topbar");
+    app.ui.app = document.getElementById("app");
+    app.ui.footer = document.getElementById("footer");
+    app.ui.navBtns = document.querySelectorAll(".nav-btn[data-sec]");
+    app.ui.volverLanding = document.getElementById("volverLanding");
+
+    // registro
     app.ui.formRegistro = document.getElementById("formRegistro");
     app.ui.regNombre = document.getElementById("regNombre");
     app.ui.regPin = document.getElementById("regPin");
@@ -28,14 +37,14 @@
     app.ui.mdPin = document.getElementById("md-pin");
     app.ui.mdJornadas = document.getElementById("md-jornadas");
 
+    // calendario + tabla
     app.ui.selectJornada = document.getElementById("selectJornada");
     app.ui.listaCalendario = document.getElementById("listaCalendario");
-
     app.ui.tablaBody = document.querySelector("#tablaClasificacion tbody");
     app.ui.exportCSV = document.getElementById("exportCSV");
     app.ui.exportJSON = document.getElementById("exportJSON");
 
-    // Admin
+    // admin UI
     app.ui.adminBtn = document.getElementById("adminBtn");
     app.ui.adminModal = document.getElementById("adminModal");
     app.ui.closeAdmin = document.getElementById("closeAdmin");
@@ -44,16 +53,12 @@
     app.ui.adminCodeInput = document.getElementById("adminCodeInput");
     app.ui.adminLoginBtn = document.getElementById("adminLoginBtn");
     app.ui.adminMsg = document.getElementById("adminMsg");
-
-    // tabs
     app.ui.tabBtns = document.querySelectorAll(".tab-btn");
     app.ui.pinCount = document.getElementById("pinCount");
     app.ui.genPins = document.getElementById("genPins");
     app.ui.pinsTable = document.querySelector("#pinsTable tbody");
-
     app.ui.jugadoresTable = document.querySelector("#jugadoresTable tbody");
     app.ui.buscarJugador = document.getElementById("buscarJugador");
-
     app.ui.nroJornada = document.getElementById("nroJornada");
     app.ui.crearJornada = document.getElementById("crearJornada");
     app.ui.selJornadaForPart = document.getElementById("selJornadaForPart");
@@ -64,7 +69,6 @@
     app.ui.agregarPartido = document.getElementById("agregarPartido");
     app.ui.adminJornadasList = document.getElementById("adminJornadasList");
     app.ui.listPartidosResultados = document.getElementById("listPartidosResultados");
-
     app.ui.ptsWin = document.getElementById("ptsWin");
     app.ui.ptsDraw = document.getElementById("ptsDraw");
     app.ui.ptsLoss = document.getElementById("ptsLoss");
@@ -75,7 +79,16 @@
     app.ui.logoutAdmin = document.getElementById("logoutAdmin");
   }
 
-  function bindNav() {
+  function bindLanding(){
+    app.ui.enterUser.addEventListener("click", () => {
+      openAppMode("user");
+    });
+    app.ui.enterAdmin.addEventListener("click", () => {
+      openAppMode("admin");
+    });
+  }
+
+  function bindNav(){
     document.querySelectorAll(".nav-btn[data-sec]").forEach(btn =>
       btn.addEventListener("click", (e) => {
         showSection(btn.dataset.sec);
@@ -83,13 +96,21 @@
         btn.classList.add("active");
       })
     );
-  }
+    app.ui.volverLanding.addEventListener("click", () => {
+      // return to landing
+      app.ui.app.classList.add("hidden");
+      app.ui.topbar.classList.add("hidden");
+      app.ui.footer.classList.add("hidden");
+      app.ui.landing.classList.remove("hidden");
+      logoutAdmin();
+    });
 
-  function bindUI() {
+    // registro + exports
     app.ui.formRegistro.addEventListener("submit", handleRegister);
     app.ui.exportCSV.addEventListener("click", exportTableCSV);
     app.ui.exportJSON.addEventListener("click", exportDBJSON);
 
+    // admin
     app.ui.adminBtn.addEventListener("click", () => {
       app.ui.adminModal.classList.remove("hidden");
     });
@@ -111,14 +132,14 @@
       createJornada(nro);
     });
     app.ui.agregarPartido.addEventListener("click", handleAgregarPartido);
-    app.ui.exportAll.addEventListener("click", exportDBJSON);
-    app.ui.importAll.addEventListener("click", () => app.ui.fileInput.click());
-    app.ui.fileInput.addEventListener("change", handleImportFile);
-    app.ui.clearAll.addEventListener("click", handleClearAll);
-    app.ui.logoutAdmin.addEventListener("click", logoutAdmin);
-    app.ui.ptsWin.addEventListener("change", () => saveState());
-    app.ui.ptsDraw.addEventListener("change", () => saveState());
-    app.ui.ptsLoss.addEventListener("change", () => saveState());
+    app.ui.exportAll?.addEventListener("click", exportDBJSON);
+    app.ui.importAll?.addEventListener("click", () => app.ui.fileInput?.click());
+    app.ui.fileInput?.addEventListener("change", handleImportFile);
+    app.ui.clearAll?.addEventListener("click", handleClearAll);
+    app.ui.logoutAdmin?.addEventListener("click", logoutAdmin);
+    app.ui.ptsWin?.addEventListener("change", () => saveState());
+    app.ui.ptsDraw?.addEventListener("change", () => saveState());
+    app.ui.ptsLoss?.addEventListener("change", () => saveState());
   }
 
   /* ---------- STATE ---------- */
@@ -128,9 +149,9 @@
         adminCode: ADMIN_CODE,
         puntos: { win: 3, draw: 1, loss: 0 }
       },
-      pins: [], // {pin, creadoEn, usado, jugadorId}
-      jugadores: [], // {id, nombre, pin, registradoEn}
-      jornadas: [], // {id, numero, partidos: [{id, local, visitante, fecha, hora, resultado:null|{l,v}}]}
+      pins: [],
+      jugadores: [],
+      jornadas: [],
       lastUpdated: new Date().toISOString()
     };
   }
@@ -139,11 +160,10 @@
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) {
       app.state = defaultState();
-      saveState();
+      saveState(false);
     } else {
       try {
         app.state = JSON.parse(raw);
-        // Ensure config campos exist
         if (!app.state.config) app.state.config = defaultState().config;
         if (!app.state.pins) app.state.pins = [];
         if (!app.state.jugadores) app.state.jugadores = [];
@@ -151,19 +171,50 @@
       } catch(e){
         console.error("Error parse LS:", e);
         app.state = defaultState();
-        saveState();
+        saveState(false);
       }
     }
   }
 
-  function saveState(){
+  function saveState(rerender = true){
     app.state.lastUpdated = new Date().toISOString();
-    // sync puntos fields with UI
     app.state.config.puntos.win = Number(app.ui.ptsWin?.value ?? app.state.config.puntos.win);
     app.state.config.puntos.draw = Number(app.ui.ptsDraw?.value ?? app.state.config.puntos.draw);
     app.state.config.puntos.loss = Number(app.ui.ptsLoss?.value ?? app.state.config.puntos.loss);
     localStorage.setItem(LS_KEY, JSON.stringify(app.state));
-    renderAll(); // re-render everything on save
+    if (rerender) renderAll();
+  }
+
+  /* ---------- UI MODE ---------- */
+  function openAppMode(mode){
+    // hide landing, show app
+    app.ui.landing.classList.add("hidden");
+    app.ui.topbar.classList.remove("hidden");
+    app.ui.app.classList.remove("hidden");
+    app.ui.footer.classList.remove("hidden");
+    showSection("registro");
+    document.querySelectorAll(".nav-btn").forEach(n => n.classList.remove("active"));
+    document.querySelector('.nav-btn[data-sec="registro"]').classList.add("active");
+
+    if (mode === "admin") {
+      // open admin login modal directly
+      app.ui.adminModal.classList.remove("hidden");
+      app.ui.adminLogin.classList.remove("hidden");
+      app.ui.adminPanel.classList.add("hidden");
+    } else {
+      // user mode: do nothing special: users can view calendar and tabla and register
+      // show/hide register form based on whether device already registered
+      const current = localStorage.getItem(LS_CURRENT);
+      if (current) {
+        // show current data
+        const player = app.state.jugadores.find(j=>j.id===current);
+        if (player) showMyData(player);
+        else localStorage.removeItem(LS_CURRENT);
+      } else {
+        // ensure form visible
+        app.ui.misDatos.classList.add("hidden");
+      }
+    }
   }
 
   /* ---------- RENDER ---------- */
@@ -176,12 +227,13 @@
     renderJugadoresTable();
     renderAdminJornadas();
     renderPartidosResultados();
+    syncRegistrationState();
   }
 
   function populateConfigUI(){
-    app.ui.ptsWin.value = app.state.config.puntos.win;
-    app.ui.ptsDraw.value = app.state.config.puntos.draw;
-    app.ui.ptsLoss.value = app.state.config.puntos.loss;
+    app.ui.ptsWin && (app.ui.ptsWin.value = app.state.config.puntos.win);
+    app.ui.ptsDraw && (app.ui.ptsDraw.value = app.state.config.puntos.draw);
+    app.ui.ptsLoss && (app.ui.ptsLoss.value = app.state.config.puntos.loss);
   }
 
   function showSection(id){
@@ -189,7 +241,7 @@
     document.getElementById(id).classList.remove("hidden");
   }
 
-  /* ---------- REGISTRO ---------- */
+  /* ---------- REGISTRO USUARIO (1 vez por dispositivo) ---------- */
   function handleRegister(e){
     e.preventDefault();
     const nombre = app.ui.regNombre.value.trim();
@@ -205,7 +257,13 @@
       return;
     }
 
-    // check pin exists and unused
+    // check device hasn't already registered a player
+    const current = localStorage.getItem(LS_CURRENT);
+    if (current) {
+      app.ui.msgRegistro.textContent = "Este dispositivo ya registró un jugador.";
+      return;
+    }
+
     const pinObj = app.state.pins.find(p => p.pin === pin);
     if (!pinObj) {
       app.ui.msgRegistro.textContent = "PIN inválido. Pide a un admin que te envíe uno.";
@@ -216,7 +274,6 @@
       return;
     }
 
-    // check duplicate nombre
     if (app.state.jugadores.some(j => j.nombre.toLowerCase() === nombre.toLowerCase())) {
       app.ui.msgRegistro.textContent = "Nombre ya registrado. Usa otro nombre o contacta admin.";
       return;
@@ -229,7 +286,9 @@
     pinObj.jugadorId = id;
     saveState();
 
-    // show success
+    // mark this device as used
+    localStorage.setItem(LS_CURRENT, id);
+
     app.ui.msgRegistro.textContent = "✔ Registro exitoso";
     app.ui.regNombre.value = "";
     app.ui.regPin.value = "";
@@ -240,7 +299,6 @@
     app.ui.misDatos.classList.remove("hidden");
     app.ui.mdNombre.textContent = "Nombre: " + j.nombre;
     app.ui.mdPin.textContent = "PIN: " + j.pin;
-    // find jornadas assigned (where appears)
     const jornadasAsignadas = [];
     app.state.jornadas.forEach(jr => {
       jr.partidos.forEach(p => {
@@ -250,6 +308,20 @@
       });
     });
     app.ui.mdJornadas.textContent = jornadasAsignadas.length ? "Asignado en: " + jornadasAsignadas.join(" | ") : "No tiene partidos asignados aún.";
+  }
+
+  function syncRegistrationState(){
+    const current = localStorage.getItem(LS_CURRENT);
+    if (current) {
+      const player = app.state.jugadores.find(j=>j.id===current);
+      if (player) showMyData(player);
+      else {
+        localStorage.removeItem(LS_CURRENT);
+        app.ui.misDatos.classList.add("hidden");
+      }
+    } else {
+      app.ui.misDatos.classList.add("hidden");
+    }
   }
 
   /* ---------- PINS ---------- */
@@ -288,7 +360,7 @@
     document.querySelectorAll(".copyPin").forEach(b => b.addEventListener("click", (e) => {
       const pin = e.currentTarget.dataset.pin;
       navigator.clipboard?.writeText(pin).then(() => {
-        alert("PIN copiado al portapapeles: " + pin);
+        alert("PIN copiado: " + pin);
       }, () => alert("No se pudo copiar"));
     }));
   }
@@ -296,6 +368,7 @@
   /* ---------- JUGADORES ---------- */
   function renderJugadoresTable(){
     const q = app.ui.buscarJugador.value?.toLowerCase?.() || "";
+    if (!app.ui.jugadoresTable) return;
     app.ui.jugadoresTable.innerHTML = "";
     app.state.jugadores.forEach(j => {
       if (q && !j.nombre.toLowerCase().includes(q)) return;
@@ -318,18 +391,18 @@
   }
 
   function deletePlayer(id){
-    // Remove pin association if any
     const pin = app.state.pins.find(p => p.jugadorId === id);
     if (pin) { pin.jugadorId = null; pin.usado = false; }
-    // Remove player
     app.state.jugadores = app.state.jugadores.filter(j => j.id !== id);
-    // Replace occurrences in partidos with "Libre"
     app.state.jornadas.forEach(jr => {
       jr.partidos.forEach(p => {
-        if (p.localId === id || p.local === id) p.local = "Libre";
-        if (p.visitanteId === id || p.visitante === id) p.visitante = "Libre";
+        if (p.local === id) p.local = "Libre";
+        if (p.visitante === id) p.visitante = "Libre";
       });
     });
+    // if deleted current device player, remove marker
+    const current = localStorage.getItem(LS_CURRENT);
+    if (current === id) localStorage.removeItem(LS_CURRENT);
     saveState();
   }
 
@@ -366,6 +439,7 @@
 
   function renderAdminJornadas(){
     // fill select for adding partido
+    if (!app.ui.selJornadaForPart) return;
     app.ui.selJornadaForPart.innerHTML = "";
     app.ui.selJornadaForPart.appendChild(new Option("-- Selecciona --", ""));
     app.state.jornadas.slice().sort((a,b)=>a.numero-b.numero).forEach(jr => {
@@ -446,8 +520,9 @@
     }));
   }
 
-  /* ---------- CALENDARIO ---------- */
+  /* ---------- CALENDARIO (por jornada) ---------- */
   function renderSelectJornadas(){
+    if (!app.ui.selectJornada) return;
     app.ui.selectJornada.innerHTML = "";
     app.ui.selectJornada.appendChild(new Option("Todas las jornadas", "all"));
     app.state.jornadas.slice().sort((a,b)=>a.numero-b.numero).forEach(jr => {
@@ -465,6 +540,12 @@
       return;
     }
     jornadas.slice().sort((a,b)=>a.numero-b.numero).forEach(jr => {
+      // jornada header
+      const header = document.createElement("div");
+      header.className = "card";
+      header.innerHTML = `<h3>Jornada ${jr.numero}</h3>`;
+      app.ui.listaCalendario.appendChild(header);
+      // partidos
       jr.partidos.forEach(p => {
         const card = document.createElement("div");
         card.className = "match-card";
@@ -493,6 +574,7 @@
 
   /* ---------- RESULTADOS ---------- */
   function renderPartidosResultados(){
+    if (!app.ui.listPartidosResultados) return;
     app.ui.listPartidosResultados.innerHTML = "";
     app.state.jornadas.slice().sort((a,b)=>a.numero-b.numero).forEach(jr => {
       jr.partidos.forEach(p => {
@@ -552,35 +634,28 @@
   }
 
   /* ---------- TABLA ---------- */
-  function buildTabla(){ // returns map jugadorId->stats
-    const stats = {}; // by player name
-    // initialize players known in jugadores list
+  function buildTabla(){
+    const stats = {};
     app.state.jugadores.forEach(j => {
       stats[j.nombre] = { nombre: j.nombre, puntos:0, pj:0, pg:0, pe:0, pp:0, gf:0, gc:0, dif:0 };
     });
 
-    // consider matches and accumulate for players present in matches too
     app.state.jornadas.forEach(jr => {
       jr.partidos.forEach(p => {
-        // only count if result exists
         if (!p.resultado) return;
         const locals = p.local || "Libre";
         const visits = p.visitante || "Libre";
-        // ensure keys exist
         if (!stats[locals]) stats[locals] = { nombre: locals, puntos:0, pj:0, pg:0, pe:0, pp:0, gf:0, gc:0, dif:0 };
         if (!stats[visits]) stats[visits] = { nombre: visits, puntos:0, pj:0, pg:0, pe:0, pp:0, gf:0, gc:0, dif:0 };
 
         const l = Number(p.resultado.l), v = Number(p.resultado.v);
-        // PJ: partidos jugados (con resultado)
         stats[locals].pj += 1;
         stats[visits].pj += 1;
-        // GF / GC
         stats[locals].gf += l;
         stats[locals].gc += v;
         stats[visits].gf += v;
         stats[visits].gc += l;
 
-        // Win/draw/loss & points
         if (l > v) {
           stats[locals].pg += 1;
           stats[visits].pp += 1;
@@ -600,15 +675,14 @@
       });
     });
 
-    // compute dif
     Object.values(stats).forEach(s => s.dif = s.gf - s.gc);
     return stats;
   }
 
   function renderTabla(){
+    if (!app.ui.tablaBody) return;
     const statsMap = buildTabla();
     const arr = Object.values(statsMap);
-    // sort: puntos desc -> dif desc -> gf desc -> nombre asc
     arr.sort((a,b) => {
       if (b.puntos !== a.puntos) return b.puntos - a.puntos;
       if (b.dif !== a.dif) return b.dif - a.dif;
@@ -635,7 +709,7 @@
     });
   }
 
-  /* ---------- EXPORTS / IMPORTS ---------- */
+  /* ---------- EXPORT / IMPORT ---------- */
   function exportDBJSON(){
     const data = JSON.stringify(app.state, null, 2);
     const blob = new Blob([data], { type: "application/json" });
@@ -680,6 +754,7 @@
   function handleClearAll(){
     if (!confirm("Eliminar todos los datos del torneo?")) return;
     localStorage.removeItem(LS_KEY);
+    localStorage.removeItem(LS_CURRENT);
     app.state = defaultState();
     saveState();
   }
@@ -714,11 +789,18 @@
   }
   function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
 
-  /* ---------- UTIL ---------- */
-  function exportToClipboard(text){
-    navigator.clipboard?.writeText(text).then(()=>alert("Copiado"), ()=>alert("No se pudo copiar"));
+  /* ---------- START / RENDER ---------- */
+  function renderAll(){
+    populateConfigUI();
+    renderSelectJornadas();
+    renderCalendario();
+    renderTabla();
+    renderPinsTable();
+    renderJugadoresTable();
+    renderAdminJornadas();
+    renderPartidosResultados();
+    syncRegistrationState();
   }
 
-  /* ---------- START ---------- */
   init();
 })();
